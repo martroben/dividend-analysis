@@ -1,3 +1,7 @@
+"""
+Script to download share price data from Nasdaq Baltic website.
+"""
+
 # standard
 import csv
 import datetime
@@ -113,7 +117,9 @@ for event in tqdm.tqdm(events, desc="Requesting share price data"):
     response.raise_for_status()
 
     # Write raw data to file
-    with open(event["RAW_DATA_PATH"], "wb") as file:
+    path = event["RAW_DATA_PATH"]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "wb") as file:
         _ = file.write(response.content)
 
     # Delay before next request to avoid bot detection

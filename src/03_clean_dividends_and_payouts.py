@@ -1,5 +1,5 @@
 """
-Script to download dividends and payouts data from Nasdaq Baltic website and save it as csv file.
+Script to clean dividends and payouts xlsx data from Nasdaq Baltic website and save it as csv.
 """
 
 # standard
@@ -8,7 +8,6 @@ import datetime
 from pathlib import Path
 # external
 import openpyxl
-import requests
 
 
 ##########
@@ -33,29 +32,6 @@ DIVIDENDS_AND_PAYOUTS_NAME_MAP = {
     "Date": "DATE",
     'Event': "EVENT_TYPE",
     "Amount per share": "AMOUNT_PER_SHARE_EUR"
-}
-
-SHARE_PRICE_NAME_MAP = {
-    "Ticker": "TICKER",
-    "Name": "COMPANY_NAME",
-    "ISIN": "ISIN",
-    "Currency": "CURRENCY",
-    "MarketPlace": "MARKET",
-    "List/segment": "MARKET_LIST",
-    "Average Price": "AVERAGE_PRICE",
-    "Open Price": "OPENING_PRICE",
-    "High Price": "HIGHEST_PRICE",
-    "Low Price": "LOWEST_PRICE",
-    "Last close Price": "LAST_CLOSE_PRICE",
-    "Last Price": "LAST_PRICE",
-    "Price Change(%)": "PRICE_CHANGE_PERCENTAGE",
-    "Best bid": "BEST_BID",
-    "Best ask": "BEST_ASK",
-    "Trades": "N_TRADES",
-    "Volume": "N_SHARES_TRADED",
-    "Turnover": "TURNOVER_EUR",
-    "Industry": "INDUSTRY_TYPE",
-    "Supersector": "SUPERSECTOR_TYPE"
 }
 
 MARKET_COUNTRY_MAP = {
@@ -176,39 +152,18 @@ def try_fixing_date(date: float | int) -> datetime.datetime:
     raise ValueError(f'Could not fix date: {date}')
 
 
-######################
-# Load data from web #
-######################
-
-# Request dividends and payouts data
-params = {
-    "download": "1",
-    "filter": "1",
-    "from": "2015-01-02",
-    "to": datetime.datetime.now().strftime(DATE_PATTERN)
-}
-response = requests.get(URL, params=params)
-response.raise_for_status()
-
-
 #################
-# Save raw data #
+# Load raw data #
 #################
 
-# Save the raw Excel file
-RAW_DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
-with open(RAW_DATA_PATH, "wb") as file:
-    file.write(response.content)
+with open(RAW_DATA_PATH, "rb") as file:
+    workbook = openpyxl.load_workbook(file, data_only=True)
+    sheet = workbook["Worksheet"]
 
 
 ####################
 # Process raw data #
 ####################
-
-# Reload data from the Excel file
-with open(RAW_DATA_PATH, "rb") as file:
-    workbook = openpyxl.load_workbook(file, data_only=True)
-    sheet = workbook["Worksheet"]
 
 header_row = sheet[1]
 column_names = [DIVIDENDS_AND_PAYOUTS_NAME_MAP[cell.value] for cell in header_row]
