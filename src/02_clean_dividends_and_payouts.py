@@ -23,8 +23,6 @@ SAVE_PATH = Path() / "data" / "dividends_and_payouts.csv"
 # Maps and constants #
 ######################
 
-DATE_PATTERN = "%Y-%m-%d"
-
 DIVIDENDS_AND_PAYOUTS_NAME_MAP = {
     "Issuer": "COMPANY_NAME",
     "Ticker": "TICKER",
@@ -52,9 +50,6 @@ def is_ee_holiday(date: datetime.date) -> bool:
         - ülestõusmispühade 1. püha
         - nelipühade 1. püha
     """
-    if date.weekday() >= 5:
-        return True
-    
     public_holidays = [
         datetime.date(date.year, 1, 1),   # 1. jaanuar – uusaasta
         datetime.date(date.year, 2, 24),  # 24. veebruar – iseseisvuspäev
@@ -75,9 +70,6 @@ def is_lv_holiday(date: datetime.date) -> bool:
     """
     Can't detect some of the moving holidays.
     """
-    if date.weekday() >= 5:
-        return True
-    
     public_holidays = [
         datetime.date(date.year, 1, 1),     # 1 January New Year's Day
         datetime.date(date.year, 5, 1),     # 1 May Labour Day
@@ -99,9 +91,6 @@ def is_lt_holiday(date: datetime.date) -> bool:
     """
     Can't detect some of the moving holidays.
     """
-    if date.weekday() >= 5:
-        return True
-    
     public_holidays = [
         datetime.date(date.year, 1, 1),   # 1 January New Year's Day
         datetime.date(date.year, 2, 16),  # 16 February Day of Restoration of the State of Lithuania (1918)
@@ -125,18 +114,45 @@ def get_previous_business_day(date: datetime.date, country: str) -> datetime.dat
     """
     Given a date, return the previous business day for the given country.
     """
-    max_offset = 5
+    max_offset = 6
+
+    random_closed_market_days = [
+        datetime.date(2015, 5, 14),
+        datetime.date(2024, 5, 9),
+        datetime.date(2018, 5, 10),
+        datetime.date(2022, 4, 18),
+        datetime.date(2022, 4, 15),
+        datetime.date(2024, 4, 1),
+        datetime.date(2024, 3, 29),
+        datetime.date(2023, 5, 1),
+        datetime.date(2015, 4, 6),
+        datetime.date(2015, 4, 3),
+        datetime.date(2024, 5, 1),
+        datetime.date(2015, 6, 24),
+        datetime.date(2020, 5, 1),
+        datetime.date(2021, 4, 5),
+        datetime.date(2021, 4, 2),
+        datetime.date(2018, 12, 26),
+        datetime.date(2021, 12, 24)
+    ]
 
     offset = 0
     while offset < max_offset:
         date -= datetime.timedelta(days=1)
         offset += 1
-        if country.lower() == "ee" and not is_ee_holiday(date):
-            return date
-        elif country.lower() == "lv" and not is_lv_holiday(date):
-            return date
-        elif country.lower() == "lt" and not is_lt_holiday(date):
-            return date
+        
+        if date.weekday() >= 5:
+            continue
+        elif date in random_closed_market_days:
+            continue
+        if country.lower() == "ee" and is_ee_holiday(date):
+            continue
+        if country.lower() == "lv" and is_lv_holiday(date):
+            continue
+        if country.lower() == "lt" and is_lt_holiday(date):
+            continue
+
+        return date
 
     raise ValueError(f'Could not find a previous business day for {date} in country {country} within {max_offset} days.')
 
@@ -146,7 +162,7 @@ def try_fixing_date(date: float | int) -> datetime.datetime:
     Some dates in input data are not formatted as dates, but given as numeric values.
     This happens because Excel stores dates as the number of days since 1899-12-30. This function tries to convert such numeric values to actual dates.
     """
-    fixed_date = datetime.datetime(1899, 12, 30) + datetime.timedelta(days=date)
+    fixed_date = datetime.date(1899, 12, 30) + datetime.timedelta(days=date)
     if fixed_date.year >= 2015 and fixed_date.year <= datetime.datetime.now().year:
         return fixed_date
     raise ValueError(f'Could not fix date: {date}')
@@ -181,6 +197,10 @@ dividends_and_payouts_data = [event for event in data_raw if any(tuple(event.val
 for event in dividends_and_payouts_data:
     if not isinstance(event["DATE"], datetime.datetime):
         event["DATE"] = try_fixing_date(event["DATE"])
+
+# Convert all date fields to date, not datetime
+for event in dividends_and_payouts_data:
+    event["DATE"] = datetime.date(event["DATE"].year, event["DATE"].month, event["DATE"].day)
 
 # Add previous business day for each event
 for event in dividends_and_payouts_data:

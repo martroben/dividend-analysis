@@ -4,7 +4,6 @@ Script to clean share prices xlsx data from Nasdaq Baltic website and save it as
 
 # standard
 import csv
-import datetime
 from pathlib import Path
 import re
 # external
@@ -40,7 +39,6 @@ SHARE_PRICE_NAME_MAP = {
 }
 
 DATE_REGEX_PATTERN = r'(\d{4}-\d{2}-\d{2})'
-DATE_PATTERN = "%Y-%m-%d"
 
 
 ##########
@@ -71,8 +69,7 @@ for path in tqdm.tqdm(raw_paths, desc="Processing raw share price files"):
     column_names = [SHARE_PRICE_NAME_MAP[cell.value] for cell in header_row] + ["DATE"]
  
     # Get date from file name
-    date_string = date_pattern.search(path.name).group(1)
-    date = datetime.datetime.strptime(date_string, DATE_PATTERN)
+    date = date_pattern.search(path.name).group(1)
 
     # Convert rows to dicts and add date
     for row in sheet.iter_rows(min_row=2, values_only=True):

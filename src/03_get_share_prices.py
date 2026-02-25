@@ -4,7 +4,6 @@ Script to download share price data from Nasdaq Baltic website.
 
 # standard
 import csv
-import datetime
 from pathlib import Path
 import random
 import time
@@ -23,14 +22,6 @@ RAW_DATA_DIR = Path() / "data" / "raw"
 EVENTS_OF_INTEREST_TYPES = [
     "dividend ex-date"
 ]
-
-
-######################
-# Maps and constants #
-######################
-
-REQUEST_DATE_PATTERN = "%Y-%m-%d"
-CSV_DATETIME_PATTERN ="%Y-%m-%d %H:%M:%S"
 
 
 #########################
@@ -64,16 +55,16 @@ events_of_interest = [event for event in dividends_and_payouts_data if event["EV
 
 events = []
 for event in events_of_interest:
-    date = datetime.datetime.strptime(event["PREVIOUS_BUSINESS_DAY"], CSV_DATETIME_PATTERN)
+    date = event["PREVIOUS_BUSINESS_DAY"]
     params = {
         "download": "1",
-        "date": date.strftime(REQUEST_DATE_PATTERN)
+        "date": date
     }
     prepared_request = requests.Request("GET", URL, params=params).prepare()
 
     event["REQUEST"] = prepared_request
     event["REQUEST_URL"] = prepared_request.url
-    event["RAW_DATA_PATH"] = RAW_DATA_DIR / f'share_prices_{date.strftime(REQUEST_DATE_PATTERN)}.xlsx'
+    event["RAW_DATA_PATH"] = RAW_DATA_DIR / f'share_prices_{date}.xlsx'
     event["RESPONSE"] = None
 
     events += [event]
