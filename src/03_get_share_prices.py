@@ -17,9 +17,9 @@ import tqdm
 ##########
 
 URL = "https://nasdaqbaltic.com/statistics/en/shares"
-DIVIDENDS_AND_PAYOUTS_DATA_PATH = Path() / "data" / "dividends_and_payouts.csv"
+DIVIDENDS_AND_PAYOUTS_PATH = Path() / "data" / "dividends_and_payouts.csv"
 RAW_DATA_DIR = Path() / "data" / "raw"
-EVENTS_OF_INTEREST_TYPES = [
+EVENT_TYPES_OF_INTEREST = [
     "dividend ex-date"
 ]
 
@@ -42,11 +42,11 @@ def random_delay():
 # Load data #
 #############
 
-with open(DIVIDENDS_AND_PAYOUTS_DATA_PATH, "r", newline="") as file:
+with open(DIVIDENDS_AND_PAYOUTS_PATH, "r", newline="") as file:
     reader = csv.DictReader(file)
     dividends_and_payouts_data = list(reader)
 
-events_of_interest = [event for event in dividends_and_payouts_data if event["EVENT_TYPE"].lower() in EVENTS_OF_INTEREST_TYPES]
+events_of_interest = [event for event in dividends_and_payouts_data if event["EVENT_TYPE"].lower() in EVENT_TYPES_OF_INTEREST]
 
 
 ####################
