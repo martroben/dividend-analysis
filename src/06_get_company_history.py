@@ -1,5 +1,5 @@
 """
-
+Script to get historical price data for companies.
 """
 
 # standard
