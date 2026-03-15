@@ -11,6 +11,15 @@ import openpyxl
 import tqdm
 
 
+##########
+# Inputs #
+##########
+
+RAW_DATA_DIR = Path() / "data" / "raw"
+SAVE_PATH = Path() / "data" / "share-prices.csv"
+RAW_FILE_NAME_HANDLE = "share-prices"
+
+
 ######################
 # Maps and constants #
 ######################
@@ -41,15 +50,6 @@ SELECT_MAP = {
     "Supersector": "SUPERSECTOR_TYPE",
     DATE_COLUMN_NAME: DATE_COLUMN_NAME
 }
-
-
-##########
-# Inputs #
-##########
-
-RAW_DATA_DIR = Path() / "data" / "raw"
-SAVE_PATH = Path() / "data" / "share-prices.csv"
-RAW_FILE_NAME_HANDLE = "share-prices"
 
 
 ################

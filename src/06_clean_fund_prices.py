@@ -11,6 +11,15 @@ import openpyxl
 import tqdm
 
 
+##########
+# Inputs #
+##########
+
+RAW_DATA_DIR = Path() / "data" / "raw"
+SAVE_PATH = Path() / "data" / "fund-prices.csv"
+RAW_FILE_NAME_HANDLE = "fund-prices"
+
+
 ######################
 # Maps and constants #
 ######################
@@ -30,15 +39,6 @@ SELECT_MAP = {
     "NAV €": "NET_ASSET_VALUE",
     DATE_COLUMN_NAME: DATE_COLUMN_NAME
 }
-
-
-##########
-# Inputs #
-##########
-
-RAW_DATA_DIR = Path() / "data" / "raw"
-SAVE_PATH = Path() / "data" / "fund-prices.csv"
-RAW_FILE_NAME_HANDLE = "fund-prices"
 
 
 ################
