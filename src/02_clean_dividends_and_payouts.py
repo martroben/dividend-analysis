@@ -88,6 +88,19 @@ for event in dividends_and_payouts_data:
 for event in dividends_and_payouts_data:
     event["DATE"] = datetime.date(event["DATE"].year, event["DATE"].month, event["DATE"].day)
 
+# Fix Ignitis gamyba and Telia Lietuva missing ticker
+know_missing_ticker_values = {
+    "Ignitis gamyba": "LNR1L",
+    "Telia Lietuva": "TEL1L"
+}
+for event in dividends_and_payouts_data:
+    if event["TICKER"]:
+        continue
+    if ticker := know_missing_ticker_values.get(event["NAME"]):
+        event["TICKER"] = ticker
+    else:
+        raise ValueError(f'found event with no ticker value given: {event}')
+
 
 ###############
 # Save as csv #
