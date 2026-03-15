@@ -15,8 +15,8 @@ import openpyxl
 ##########
 
 URL = "https://nasdaqbaltic.com/statistics/en/dividends"
-RAW_DATA_PATH = Path() / "data" / "raw" / "dividends_and_payouts.xlsx"
-SAVE_PATH = Path() / "data" / "dividends_and_payouts.csv"
+RAW_DATA_PATH = Path() / "data" / "raw" / "dividends-and-payouts.xlsx"
+SAVE_PATH = Path() / "data" / "dividends-and-payouts.csv"
 
 
 ######################
@@ -24,7 +24,7 @@ SAVE_PATH = Path() / "data" / "dividends_and_payouts.csv"
 ######################
 
 DIVIDENDS_AND_PAYOUTS_NAME_MAP = {
-    "Issuer": "COMPANY_NAME",
+    "Issuer": "NAME",
     "Ticker": "TICKER",
     "Market": "MARKET",
     "Date": "DATE",
@@ -42,120 +42,6 @@ MARKET_COUNTRY_MAP = {
 #########################
 # Classes and functions #
 #########################
-
-def is_ee_holiday(date: datetime.date) -> bool:
-    """
-    Can't detect the following:
-        - suur reede
-        - ülestõusmispühade 1. püha
-        - nelipühade 1. püha
-    """
-    public_holidays = [
-        datetime.date(date.year, 1, 1),   # 1. jaanuar – uusaasta
-        datetime.date(date.year, 2, 24),  # 24. veebruar – iseseisvuspäev
-        datetime.date(date.year, 5, 1),   # 1. mai – kevadpüha
-        datetime.date(date.year, 6, 23),  # 23. juuni – võidupüha
-        datetime.date(date.year, 6, 24),  # 24. juuni – jaanipäev
-        datetime.date(date.year, 8, 20),  # 20. august – taasiseseisvumispäev
-        datetime.date(date.year, 12, 24), # 24. detsember – jõululaupäev
-        datetime.date(date.year, 12, 25), # 25. detsember – esimene jõulupüha
-        datetime.date(date.year, 12, 26)  # 26. detsember – teine jõulupüha
-    ]
-    if date in public_holidays:
-        return True
-    return False
-
-
-def is_lv_holiday(date: datetime.date) -> bool:
-    """
-    Can't detect some of the moving holidays.
-    """
-    public_holidays = [
-        datetime.date(date.year, 1, 1),     # 1 January New Year's Day
-        datetime.date(date.year, 5, 1),     # 1 May Labour Day
-        datetime.date(date.year, 5, 4),     # 4 May Restoration of Independence Day
-        datetime.date(date.year, 6, 23),    # 23 June Līgo Day
-        datetime.date(date.year, 6, 24),    # 24 June Jāņi Day
-        datetime.date(date.year, 11, 18),   # 18 November Proclamation Day of the Republic of Latvia
-        datetime.date(date.year, 12, 24),   # 24 December Christmas Eve
-        datetime.date(date.year, 12, 25),   # 25 December Christmas Day
-        datetime.date(date.year, 12, 26),   # 26 December Second Day of Christmas
-        datetime.date(date.year, 12, 31)    # 31 December New Year's Eve
-    ]
-    if date in public_holidays:
-        return True
-    return False
-
-
-def is_lt_holiday(date: datetime.date) -> bool:
-    """
-    Can't detect some of the moving holidays.
-    """
-    public_holidays = [
-        datetime.date(date.year, 1, 1),   # 1 January New Year's Day
-        datetime.date(date.year, 2, 16),  # 16 February Day of Restoration of the State of Lithuania (1918)
-        datetime.date(date.year, 3, 11),  # 11 March Day of Restoration of Independence of Lithuania (1990)
-        datetime.date(date.year, 5, 1),   # 1 May International Workers' Day
-        datetime.date(date.year, 6, 24),  # 24 June St. John's Day / Day of Dew
-        datetime.date(date.year, 7, 6),   # 6 July Statehood Day
-        datetime.date(date.year, 8, 15),  # 15 August Assumption Day
-        datetime.date(date.year, 11, 1),  # 1 November All Saints' Day
-        datetime.date(date.year, 11, 2),  # 2 November All Souls' Day
-        datetime.date(date.year, 12, 24), # 24 December Christmas Eve
-        datetime.date(date.year, 12, 25), # 25 December Christmas
-        datetime.date(date.year, 12, 26)  # 26 December Christmas
-    ]
-    if date in public_holidays:
-        return True
-    return False
-
-
-def get_previous_business_day(date: datetime.date, country: str) -> datetime.date:
-    """
-    Given a date, return the previous business day for the given country.
-    """
-    max_offset = 6
-
-    random_closed_market_days = [
-        datetime.date(2015, 5, 14),
-        datetime.date(2024, 5, 9),
-        datetime.date(2018, 5, 10),
-        datetime.date(2022, 4, 18),
-        datetime.date(2022, 4, 15),
-        datetime.date(2024, 4, 1),
-        datetime.date(2024, 3, 29),
-        datetime.date(2023, 5, 1),
-        datetime.date(2015, 4, 6),
-        datetime.date(2015, 4, 3),
-        datetime.date(2024, 5, 1),
-        datetime.date(2015, 6, 24),
-        datetime.date(2020, 5, 1),
-        datetime.date(2021, 4, 5),
-        datetime.date(2021, 4, 2),
-        datetime.date(2018, 12, 26),
-        datetime.date(2021, 12, 24)
-    ]
-
-    offset = 0
-    while offset < max_offset:
-        date -= datetime.timedelta(days=1)
-        offset += 1
-        
-        if date.weekday() >= 5:
-            continue
-        elif date in random_closed_market_days:
-            continue
-        if country.lower() == "ee" and is_ee_holiday(date):
-            continue
-        if country.lower() == "lv" and is_lv_holiday(date):
-            continue
-        if country.lower() == "lt" and is_lt_holiday(date):
-            continue
-
-        return date
-
-    raise ValueError(f'Could not find a previous business day for {date} in country {country} within {max_offset} days.')
-
 
 def try_fixing_date(date: float | int) -> datetime.datetime:
     """
@@ -201,17 +87,6 @@ for event in dividends_and_payouts_data:
 # Convert all date fields to date, not datetime
 for event in dividends_and_payouts_data:
     event["DATE"] = datetime.date(event["DATE"].year, event["DATE"].month, event["DATE"].day)
-
-# Add previous business day for each event
-for event in dividends_and_payouts_data:
-    country = MARKET_COUNTRY_MAP[event["MARKET"]]
-    previous_business_day = get_previous_business_day(
-        event["DATE"],
-        country=country
-    )
-    event["PREVIOUS_BUSINESS_DAY"] = previous_business_day
-
-column_names += ["PREVIOUS_BUSINESS_DAY"]
 
 
 ###############

@@ -18,8 +18,10 @@ import requests
 ##########
 
 URL = "https://nasdaqbaltic.com/statistics/en/instrument"
-TICKER_ISIN_PATH = Path() / "data" / "ticker_isin.csv"
+TICKER_ISIN_PATH = Path() / "data" / "ticker-isin.csv"
 RAW_DATA_DIR = Path() / "data" / "raw"
+RAW_FILE_NAME_HANDLE = "history"
+STOCK_DATA_START_YEAR = 2005
 
 
 ######################
@@ -43,25 +45,24 @@ def random_delay():
     time.sleep(delay)
 
 
-
 #############
 # Read data #
 #############
 
 with open(TICKER_ISIN_PATH, "r", newline="") as file:
     reader = csv.DictReader(file)
-    companies= list(reader)
+    companies = list(reader)
 
 
 for company in companies:
     # Get raw data path
-    raw_data_path = RAW_DATA_DIR / f'company_history_{company["TICKER"]}.xlsx'
+    raw_data_path = RAW_DATA_DIR / f'{RAW_FILE_NAME_HANDLE}_{company["TICKER"]}.xlsx'
     company["RAW_DATA_PATH"] = raw_data_path
 
     # Prepare request
     url = f'{URL}/{company["ISIN"]}/trading/chart_price_download'
     params = {
-        "start": "2005-01-01",
+        "start": f'{STOCK_DATA_START_YEAR}-01-01',
         "end": datetime.datetime.now().strftime(DATE_PATTERN)
     }
     prepared_request = requests.Request("GET", url, params=params).prepare()
@@ -87,14 +88,13 @@ session.headers.update(session_headers)
 # "Warm up" the session
 _ = session.get("https://nasdaqbaltic.com/statistics/en/capitalization")
 random_delay()
-random_delay()
 
 
 ################
 # Request data #
 ################
 
-for company in tqdm.tqdm(companies, desc="Requesting company history data"):
+for company in tqdm.tqdm(companies, desc="Requesting instrument history data"):
     # Skip if same data is already downloaded
     if company["RAW_DATA_PATH"].exists():
         print(f'Raw data for {company["TICKER"]} already exists. Skipping download.')
@@ -116,4 +116,3 @@ for company in tqdm.tqdm(companies, desc="Requesting company history data"):
 
     # Delay before next request to avoid bot detection
     random_delay()
-

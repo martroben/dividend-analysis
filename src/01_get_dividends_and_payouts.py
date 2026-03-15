@@ -14,7 +14,7 @@ import requests
 ##########
 
 URL = "https://nasdaqbaltic.com/statistics/en/dividends"
-RAW_DATA_PATH = Path() / "data" / "raw" / "dividends_and_payouts.xlsx"
+RAW_DATA_PATH = Path() / "data" / "raw" / "dividends-and-payouts.xlsx"
 
 
 ######################
