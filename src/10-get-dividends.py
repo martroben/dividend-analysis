@@ -3,13 +3,11 @@ Script to analyse dividend returns.
 """
 
 # standard
-import csv
 import datetime
 from pathlib import Path
 # external
 import polars as pl
 from polars import col
-import tqdm
 
 
 ##########
