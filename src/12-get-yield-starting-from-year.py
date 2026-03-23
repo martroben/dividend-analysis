@@ -6,6 +6,7 @@ Cumulative yield is the increase per euro spent.
 """
 
 # standard
+import datetime
 from pathlib import Path
 # external
 import polars as pl
@@ -83,12 +84,23 @@ year_ticker_combinations = (
     )
 )
 
+current_year = datetime.datetime.now().year
+
 # For each year, calculate how much future dividend per stock is received starting from this year
 cumulative_dividend_starting_from_year = (
     dividends
     # Aggregate by year
     .with_columns(
         YEAR=col("DATE").dt.year()
+    )
+    # Set current year dividend to 0 (because some companies might have not yet paid current year's dividend)
+    .with_columns(
+        DIVIDEND_PER_UNIT_EUR=pl.when(
+            col("YEAR") == current_year,
+            0
+        ).otherwise(
+            col("DIVIDEND_PER_UNIT_EUR")
+        )
     )
     # Add years with zero dividends
     .join(
@@ -122,7 +134,7 @@ dividend_yield_starting_from_year = (
         how="left"
     )
     .with_columns(
-        CUMULATIVE_DIVIDEND_YIELD_STARTING_FROM_YEAR=col("CUMULATIVE_DIVIDEND_PER_UNIT_STARTING_FROM_YEAR_EUR") / col("PRICE_EUR")
+        DIVIDEND_YIELD_STARTING_FROM_YEAR=col("CUMULATIVE_DIVIDEND_PER_UNIT_STARTING_FROM_YEAR_EUR") / col("PRICE_EUR")
     )
 )
 
