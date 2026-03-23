@@ -109,7 +109,7 @@ annual_prices_with_episodes = (
         ).over("TICKER")
     )
     .with_columns(
-        I_LISTING_EPISODE=col("IS_START_OF_STREAK").cum_sum().over("TICKER")
+        LISTING_EPISODE=col("IS_START_OF_STREAK").cum_sum().over("TICKER")
     )
     .filter(col("PRICE_EUR").is_not_null())
     .drop(col("IS_START_OF_STREAK"))
