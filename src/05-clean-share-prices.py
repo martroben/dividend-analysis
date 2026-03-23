@@ -100,6 +100,7 @@ data.sort(key=lambda x: x[DATE_COLUMN_NAME])
 # Save data #
 #############
 
+SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
 with open(SAVE_PATH, "w", newline="") as file:
     writer = csv.DictWriter(file, fieldnames=data[0].keys())
     writer.writeheader()

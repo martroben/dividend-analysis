@@ -106,6 +106,7 @@ for event in dividends_and_payouts_data:
 # Save as csv #
 ###############
 
+SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
 with open(SAVE_PATH, "w", newline="") as file:
     writer = csv.DictWriter(file, fieldnames=column_names)
     writer.writeheader()

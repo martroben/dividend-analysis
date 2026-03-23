@@ -57,6 +57,7 @@ for ticker, isin in ticker_isin_map.items():
 # Save data #
 #############
 
+SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
 with open(SAVE_PATH, "w", newline="") as file:
     writer = csv.DictWriter(file, fieldnames=ticker_isin_data[0].keys())
     writer.writeheader()

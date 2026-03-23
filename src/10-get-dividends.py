@@ -157,5 +157,6 @@ dividends = (
 # Save data #
 #############
 
+SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
 with open(SAVE_PATH, "w", newline="") as file:
     dividends.write_csv(file)

@@ -120,5 +120,6 @@ annual_prices_with_episodes = (
 # Save data #
 #############
 
+SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
 with open(SAVE_PATH, "w", newline="") as file:
     annual_prices_with_episodes.write_csv(file)
