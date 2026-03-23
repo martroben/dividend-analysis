@@ -65,6 +65,9 @@ price_yield_starting_from_year = (
     .with_columns(
         PRICE_YIELD_STARTING_FROM_YEAR=col("PRICE_INCREASE_STARTING_FROM_YEAR_EUR") / col("PRICE_EUR")
     )
+    .rename({
+        "YEAR": "START_YEAR"
+    })
     .drop(
         col("LATEST_PRICE_EUR")
     )
@@ -133,6 +136,9 @@ dividend_yield_starting_from_year = (
         on=[col("TICKER"), col("YEAR"), col("LISTING_EPISODE")],
         how="left"
     )
+    .rename({
+        "YEAR": "START_YEAR"
+    })
     .with_columns(
         DIVIDEND_YIELD_STARTING_FROM_YEAR=col("CUMULATIVE_DIVIDEND_PER_UNIT_STARTING_FROM_YEAR_EUR") / col("PRICE_EUR")
     )
