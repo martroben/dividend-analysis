@@ -1,5 +1,6 @@
 """
 Script to download fund price data from Nasdaq Baltic website.
+Used to get all available instruments that have been active on market throughout the years.
 """
 
 # standard
