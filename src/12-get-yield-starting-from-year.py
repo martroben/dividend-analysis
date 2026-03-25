@@ -99,11 +99,10 @@ cumulative_dividend_starting_from_year = (
     # Set current year dividend to 0 (because some companies might have not yet paid current year's dividend)
     .with_columns(
         DIVIDEND_PER_UNIT_EUR=pl.when(
-            col("YEAR") == current_year,
-            0
-        ).otherwise(
-            col("DIVIDEND_PER_UNIT_EUR")
+            col("YEAR") == current_year
         )
+        .then(0)
+        .otherwise(col("DIVIDEND_PER_UNIT_EUR"))
     )
     # Add years with zero dividends
     .join(
