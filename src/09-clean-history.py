@@ -4,7 +4,6 @@ Script to clean instrument history xlsx data from Nasdaq Baltic website and save
 
 # standard
 import csv
-import datetime
 from pathlib import Path
 import re
 # external

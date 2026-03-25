@@ -8,9 +8,9 @@ import datetime
 from pathlib import Path
 import random
 import time
-import tqdm
 # external
 import requests
+import tqdm
 
 
 ##########
