@@ -1,3 +1,7 @@
+"""
+Script to download Estonian consumer price index changes data from the national statistics API.
+Adds a column for cumulative change since given year.
+"""
 
 # standard
 import json
