@@ -23,7 +23,7 @@ SAVE_PATH = Path() / "data" / "dividends.csv"
 # Maps and constants #
 ######################
 
-EVENTS_OF_INTEREST = ["Dividend ex-date"]
+RELEVANT_EVENTS = ["Dividend ex-date"]
 
 
 #############
@@ -52,7 +52,7 @@ with open(HISTORY_PATH) as file:
 dividends_and_payouts = (
     dividends_and_payouts_raw
     .filter(
-        col("EVENT_TYPE").is_in(EVENTS_OF_INTEREST),
+        col("EVENT_TYPE").is_in(RELEVANT_EVENTS),
         col("DATE") < datetime.datetime.now()
     )
 )
