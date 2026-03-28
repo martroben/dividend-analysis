@@ -20,6 +20,7 @@ ETF_YIELD_STARTING_FROM_YEAR_PATH = Path() / "data" / "etf-yield-starting-from-y
 CONSUMER_PRICE_INDEX_CHANGE_PATH = Path() / "data" / "consumer-price-index-change.csv"
 
 PRICE_AND_DIVIDEND_DATA_SAVE_PATH = Path() / "data" / "plot-data-price-and-dividend.csv"
+ETF_DATA_SAVE_PATH = Path() / "data" / "plot-data-etf.csv"
 INFLATION_DATA_SAVE_PATH = Path() / "data" / "plot-data-inflation.csv"
 # Durations of years (from starting year) to compare on the plots
 RELEVANT_INVESTMENT_DURATIONS_YEARS = [3, 5, 7]
@@ -144,6 +145,58 @@ relevant_data = (
 )
 
 
+#####################
+# Add missing years #
+#####################
+
+# For instruments that have not been on market for all durations of interest, the earliest start year values are inserted.
+# This assumes that the cumulative growth is zero for years before the instrument came to the market.
+start_year_ticker_combinations = (
+    relevant_data
+    .select(col("START_YEAR"))
+    .unique()
+    .join(
+        relevant_data
+        .select(col("TICKER"))
+        .unique(),
+        how="cross"
+    )
+)
+
+missing_start_years = (
+    relevant_data
+    .sort(col("START_YEAR"))
+    # Select values with earliest available start year
+    .group_by(col("TICKER"))
+    .agg(
+        PRICE_YIELD=col("PRICE_YIELD").first(),
+        DIVIDEND_YIELD=col("DIVIDEND_YIELD").first()
+    )
+    .join(
+        start_year_ticker_combinations,
+        on=col("TICKER"),
+        how="right"
+    )
+    .join(
+        relevant_data,
+        on=[col("TICKER"), col("START_YEAR")],
+        how="anti"
+    )
+    # Set correct column positions for concatenation
+    .select(
+        col("TICKER"),
+        col("START_YEAR"),
+        col("PRICE_YIELD"),
+        col("DIVIDEND_YIELD")
+    )
+)
+
+relevant_data_nulls_added = pl.concat([
+    relevant_data,
+    missing_start_years
+])
+
+
 ###################################################
 # Select / filter comparison ETF data of interest #
 ###################################################
@@ -175,7 +228,7 @@ comparison_etf_relevant_data = (
 
 # Set rank by mean rank of the total yield across all start years of interest
 rank = (
-    relevant_data
+    relevant_data_nulls_added
     .sort(
         col("START_YEAR"),
         # Sort by total yield
@@ -191,14 +244,13 @@ rank = (
     )
     .sort(col("MEAN_RANK"))
     .with_columns(
-        # Cast to signed integer, so the data can be concatenated with ETF conmparison data with negative ranks
-        RANK=pl.row_index().cast(pl.Int8) + 1
+        RANK=pl.row_index() + 1
     )
     .drop(col("MEAN_RANK"))
 )
 
 data_with_rank = (
-    relevant_data
+    relevant_data_nulls_added
     .join(
         rank,
         on=col("TICKER"),
@@ -210,12 +262,35 @@ data_with_rank = (
     .sort(col("RANK"))
 )
 
+dividend_rank = (
+    data_with_rank
+    .group_by(col("TICKER"))
+    .agg(
+        MEAN_DIVIDEND_YIELD=col("DIVIDEND_YIELD").mean()
+    )
+    .sort(
+        col("MEAN_DIVIDEND_YIELD"),
+        descending=True
+    )
+    .with_columns(
+        DIVIDEND_RANK=pl.row_index() + 1
+    )
+    .drop(col("MEAN_DIVIDEND_YIELD"))
+)
+
+data_with_dividend_rank = (
+    data_with_rank
+    .join(
+        dividend_rank,
+        on=col("TICKER"),
+        how="left"
+    )
+)
+
 
 ###################################
 # Get ranking of comparison ETF-s #
 ###################################
-
-n_comparison_etfs = comparison_etf_relevant_data["TICKER"].unique().count()
 
 etf_rank = (
     comparison_etf_relevant_data
@@ -233,9 +308,7 @@ etf_rank = (
     )
     .sort(col("MEAN_RANK"))
     .with_columns(
-        # Cast to signed int, because row_index() returns an uint
-        # Make ETF ranks negative numbers so that lowest ETF rank is -1
-        RANK=pl.row_index().cast(pl.Int8) - n_comparison_etfs
+        RANK=pl.row_index() + 1
     )
     .drop(col("MEAN_RANK"))
 )
@@ -247,7 +320,6 @@ comparison_etf_data_with_rank = (
         on=col("TICKER"),
         how="left"
     )
-    .sort(col("RANK"))
 )
 
 
@@ -255,17 +327,34 @@ comparison_etf_data_with_rank = (
 # Add bar relative positions #
 ##############################
 
-price_and_dividend_save_data = (
-    pl.concat([
-        data_with_rank,
-        comparison_etf_data_with_rank
-    ])
+plot_data = (
+    data_with_dividend_rank
     .with_columns(
         # base = y position where bar starts
         # top = y position where bar ends
         PRICE_YIELD_BASE=col("DIVIDEND_YIELD"),
-        PRICE_YIELD_TOP=col("PRICE_YIELD") + col("DIVIDEND_YIELD")
+        PRICE_YIELD_TOP=col("PRICE_YIELD") + col("DIVIDEND_YIELD"),
+        MEAN_ANNUAL_YIELD=(col("PRICE_YIELD") + col("DIVIDEND_YIELD")) / (current_year - col("START_YEAR")),
+        MEAN_ANNUAL_DIVIDEND_YIELD=col("DIVIDEND_YIELD") / (current_year - col("START_YEAR"))
     )
+    .sort(
+        [col("RANK"), col("START_YEAR")],
+        descending=[True, False]
+    )
+    .drop(col("PRICE_YIELD"))
+)
+
+plot_data_etf = (
+    comparison_etf_data_with_rank
+    .with_columns(
+        # base = y position where bar starts
+        # top = y position where bar ends
+        PRICE_YIELD_BASE=col("DIVIDEND_YIELD"),
+        PRICE_YIELD_TOP=col("PRICE_YIELD") + col("DIVIDEND_YIELD"),
+        MEAN_ANNUAL_YIELD=(col("PRICE_YIELD") + col("DIVIDEND_YIELD")) / (current_year - col("START_YEAR")),
+        MEAN_ANNUAL_DIVIDEND_YIELD=col("DIVIDEND_YIELD") / (current_year - col("START_YEAR"))
+    )
+    .sort(col("RANK"), descending=True)
     .drop(col("PRICE_YIELD"))
 )
 
@@ -274,7 +363,7 @@ price_and_dividend_save_data = (
 # Get inflation plot data #
 ###########################
 
-inflation_save_data = (
+plot_data_inflation = (
     consumer_price_index_change
     .rename({
         "YEAR": "START_YEAR",
@@ -294,8 +383,12 @@ inflation_save_data = (
 
 PRICE_AND_DIVIDEND_DATA_SAVE_PATH.parent.mkdir(exist_ok=True)
 with open(PRICE_AND_DIVIDEND_DATA_SAVE_PATH, "w", newline="") as file:
-    price_and_dividend_save_data.write_csv(file)
+    plot_data.write_csv(file)
+
+ETF_DATA_SAVE_PATH.parent.mkdir(exist_ok=True)
+with open(ETF_DATA_SAVE_PATH, "w", newline="") as file:
+    plot_data_etf.write_csv(file)
 
 INFLATION_DATA_SAVE_PATH.parent.mkdir(exist_ok=True)
 with open(INFLATION_DATA_SAVE_PATH, "w", newline="") as file:
-    inflation_save_data.write_csv(file)
+    plot_data_inflation.write_csv(file)
