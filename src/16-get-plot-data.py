@@ -338,7 +338,7 @@ plot_data = (
         MEAN_ANNUAL_DIVIDEND_YIELD=col("DIVIDEND_YIELD") / (current_year - col("START_YEAR"))
     )
     .sort(
-        [col("RANK"), col("START_YEAR")],
+        [col("DIVIDEND_RANK"), col("START_YEAR")],
         descending=[True, False]
     )
     .drop(col("PRICE_YIELD"))
