@@ -331,9 +331,7 @@ plot_data = (
     data_with_dividend_rank
     .with_columns(
         # base = y position where bar starts
-        # top = y position where bar ends
         PRICE_YIELD_BASE=col("DIVIDEND_YIELD"),
-        PRICE_YIELD_TOP=col("PRICE_YIELD") + col("DIVIDEND_YIELD"),
         MEAN_ANNUAL_YIELD=(col("PRICE_YIELD") + col("DIVIDEND_YIELD")) / (current_year - col("START_YEAR")),
         MEAN_ANNUAL_DIVIDEND_YIELD=col("DIVIDEND_YIELD") / (current_year - col("START_YEAR"))
     )
@@ -341,21 +339,17 @@ plot_data = (
         [col("DIVIDEND_RANK"), col("START_YEAR")],
         descending=[True, False]
     )
-    .drop(col("PRICE_YIELD"))
 )
 
 plot_data_etf = (
     comparison_etf_data_with_rank
     .with_columns(
         # base = y position where bar starts
-        # top = y position where bar ends
         PRICE_YIELD_BASE=col("DIVIDEND_YIELD"),
-        PRICE_YIELD_TOP=col("PRICE_YIELD") + col("DIVIDEND_YIELD"),
         MEAN_ANNUAL_YIELD=(col("PRICE_YIELD") + col("DIVIDEND_YIELD")) / (current_year - col("START_YEAR")),
         MEAN_ANNUAL_DIVIDEND_YIELD=col("DIVIDEND_YIELD") / (current_year - col("START_YEAR"))
     )
     .sort(col("RANK"), descending=True)
-    .drop(col("PRICE_YIELD"))
 )
 
 
