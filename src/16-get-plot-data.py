@@ -126,7 +126,8 @@ relevant_data = (
             col("TICKER")
         ).otherwise(
             pl.concat_str([col("TICKER"), col("LISTING_EPISODE")], separator="_")
-        )
+        ),
+        IS_ACTIVE=pl.lit(True)
     )
     # Select relevant years
     .filter(
@@ -140,7 +141,8 @@ relevant_data = (
         col("TICKER"),
         col("START_YEAR"),
         col("PRICE_YIELD"),
-        col("DIVIDEND_YIELD")
+        col("DIVIDEND_YIELD"),
+        col("IS_ACTIVE")
     )
 )
 
@@ -182,12 +184,16 @@ missing_start_years = (
         on=[col("TICKER"), col("START_YEAR")],
         how="anti"
     )
+    .with_columns(
+        IS_ACTIVE=pl.lit(False)
+    )
     # Set correct column positions for concatenation
     .select(
         col("TICKER"),
         col("START_YEAR"),
         col("PRICE_YIELD"),
-        col("DIVIDEND_YIELD")
+        col("DIVIDEND_YIELD"),
+        col("IS_ACTIVE")
     )
 )
 
@@ -211,13 +217,15 @@ comparison_etf_relevant_data = (
     })
     # Add dividend yield column of type float64 to concatenate with other data later
     .with_columns(
-        DIVIDEND_YIELD=pl.lit(0).cast(pl.Float64)
+        DIVIDEND_YIELD=pl.lit(0).cast(pl.Float64),
+        IS_ACTIVE=pl.lit(True)
     )
     .select(
         col("TICKER"),
         col("START_YEAR"),
         col("PRICE_YIELD"),
-        col("DIVIDEND_YIELD")
+        col("DIVIDEND_YIELD"),
+        col("IS_ACTIVE")
     )
 )
 
@@ -296,7 +304,8 @@ etf_rank = (
     comparison_etf_relevant_data
     .sort(
         col("START_YEAR"),
-        col("PRICE_YIELD"),
+        # Sort by total yield
+        col("PRICE_YIELD") + col("DIVIDEND_YIELD"),
         descending=[False, True]
     )
     .with_columns(
@@ -313,27 +322,53 @@ etf_rank = (
     .drop(col("MEAN_RANK"))
 )
 
-comparison_etf_data_with_rank = (
+etf_data_with_rank = (
     comparison_etf_relevant_data
     .join(
         etf_rank,
         on=col("TICKER"),
         how="left"
     )
+    .sort(col("RANK"))
+)
+
+etf_dividend_rank = (
+    etf_data_with_rank
+    .group_by(col("TICKER"))
+    .agg(
+        MEAN_DIVIDEND_YIELD=col("DIVIDEND_YIELD").mean()
+    )
+    .sort(
+        col("MEAN_DIVIDEND_YIELD"),
+        descending=True
+    )
+    .with_columns(
+        DIVIDEND_RANK=pl.row_index() + 1
+    )
+    .drop(col("MEAN_DIVIDEND_YIELD"))
+)
+
+comparison_etf_data_with_rank = (
+    etf_data_with_rank
+    .join(
+        etf_dividend_rank,
+        on=col("TICKER"),
+        how="left"
+    )
 )
 
 
-##############################
-# Add bar relative positions #
-##############################
+#############################
+# Add auxiliary information #
+#############################
 
 plot_data = (
     data_with_dividend_rank
     .with_columns(
         # base = y position where bar starts
         PRICE_YIELD_BASE=col("DIVIDEND_YIELD"),
-        MEAN_ANNUAL_YIELD=(col("PRICE_YIELD") + col("DIVIDEND_YIELD")) / (current_year - col("START_YEAR")),
-        MEAN_ANNUAL_DIVIDEND_YIELD=col("DIVIDEND_YIELD") / (current_year - col("START_YEAR"))
+        MEAN_ANNUAL_YIELD=((1 + col("PRICE_YIELD") + col("DIVIDEND_YIELD")) ** (1 / (current_year - col("START_YEAR")))) - 1,
+        MEAN_ANNUAL_DIVIDEND_YIELD=((1 + col("DIVIDEND_YIELD")) ** (1 / (current_year - col("START_YEAR")))) - 1
     )
     .sort(
         [col("DIVIDEND_RANK"), col("START_YEAR")],
@@ -346,10 +381,13 @@ plot_data_etf = (
     .with_columns(
         # base = y position where bar starts
         PRICE_YIELD_BASE=col("DIVIDEND_YIELD"),
-        MEAN_ANNUAL_YIELD=(col("PRICE_YIELD") + col("DIVIDEND_YIELD")) / (current_year - col("START_YEAR")),
-        MEAN_ANNUAL_DIVIDEND_YIELD=col("DIVIDEND_YIELD") / (current_year - col("START_YEAR"))
+        MEAN_ANNUAL_YIELD=((1 + col("PRICE_YIELD") + col("DIVIDEND_YIELD")) ** (1 / (current_year - col("START_YEAR")))) - 1,
+        MEAN_ANNUAL_DIVIDEND_YIELD=((1 + col("DIVIDEND_YIELD")) ** (1 / (current_year - col("START_YEAR")))) - 1
     )
-    .sort(col("RANK"), descending=True)
+    .sort(
+        [col("DIVIDEND_RANK"), col("START_YEAR")],
+        descending=[True, False]
+    )
 )
 
 
