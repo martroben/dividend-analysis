@@ -74,17 +74,13 @@ year_ticker_combinations = (
 
 annual_prices = (
     history
-    .sort(
-        col("TICKER"),
-        col("DATE")
-    )
     .group_by(
         col("TICKER"),
         col("YEAR")
     )
     .agg(
         # Set annual price as the price of the first day of the year
-        PRICE_EUR=col("LAST_PRICE_ADJUSTED").first()
+        PRICE_EUR=col("LAST_PRICE_ADJUSTED").sort_by("DATE").first()
     )
     .join(
         year_ticker_combinations,
