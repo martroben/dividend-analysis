@@ -22,6 +22,8 @@ CONSUMER_PRICE_INDEX_CHANGE_PATH = Path() / "data" / "consumer-price-index-chang
 PRICE_AND_DIVIDEND_DATA_SAVE_PATH = Path() / "data" / "plot-data-price-and-dividend.csv"
 ETF_DATA_SAVE_PATH = Path() / "data" / "plot-data-etf.csv"
 INFLATION_DATA_SAVE_PATH = Path() / "data" / "plot-data-inflation.csv"
+PORTFOLIO_DATA_SAVE_PATH = Path() / "data" / "plot-data-portfolio.csv"
+PORTFOLIO_PATH = Path() / "data" / "portfolio.csv"
 # Durations of years (from starting year) to compare on the plots
 RELEVANT_INVESTMENT_DURATIONS_YEARS = [3, 5, 7]
 # Number of instruments to plot in addition to the comparison ETF-s
@@ -54,6 +56,9 @@ with open(ETF_YIELD_STARTING_FROM_YEAR_PATH) as file:
 
 with open(CONSUMER_PRICE_INDEX_CHANGE_PATH) as file:
     consumer_price_index_change = pl.read_csv(file)
+
+with open(PORTFOLIO_PATH) as file:
+    portfolio_raw = pl.read_csv(file)
 
 
 ####################################
@@ -391,6 +396,85 @@ plot_data_etf = (
 )
 
 
+##########################
+# Get portfolio plot data #
+##########################
+
+total_weight = portfolio_raw["WEIGHT"].sum()
+if abs(total_weight - 1.0) > 1e-6:
+    raise ValueError(f"Portfolio weights must sum to 1.0, got {total_weight:.6f}")
+
+portfolio_tickers = set(portfolio_raw["TICKER"].to_list())
+active_tickers = set(currently_active_instruments["TICKER"].to_list())
+inactive_portfolio_tickers = portfolio_tickers - active_tickers
+if inactive_portfolio_tickers:
+    raise ValueError(f"Portfolio tickers not currently active on the market: {inactive_portfolio_tickers}")
+
+# Get price and dividend yields for all start years so missing years can fall back to earliest available
+constituent_yields = (
+    price_yield_starting_from_year
+    .join(currently_active_instruments, on=[col("TICKER"), col("LISTING_EPISODE")], how="semi")
+    .filter(col("TICKER").is_in(list(portfolio_tickers)))
+    .join(
+        dividend_yield_starting_from_year.select(
+            col("TICKER"), col("START_YEAR"), col("LISTING_EPISODE"),
+            col("DIVIDEND_YIELD_STARTING_FROM_YEAR")
+        ),
+        on=[col("TICKER"), col("START_YEAR"), col("LISTING_EPISODE")],
+        how="left"
+    )
+    .select(
+        col("TICKER"),
+        col("START_YEAR"),
+        PRICE_YIELD=col("PRICE_YIELD_STARTING_FROM_YEAR"),
+        DIVIDEND_YIELD=col("DIVIDEND_YIELD_STARTING_FROM_YEAR").fill_null(0.0)
+    )
+)
+
+weights = dict(zip(portfolio_raw["TICKER"].to_list(), portfolio_raw["WEIGHT"].to_list()))
+
+portfolio_rows = []
+for start_year in relevant_start_years:
+    year_yields = constituent_yields.filter(col("START_YEAR") == start_year)
+
+    price_yield_val = 0.0
+    dividend_yield_val = 0.0
+    is_all_active = True
+
+    for ticker, weight in weights.items():
+        ticker_row = year_yields.filter(col("TICKER") == ticker)
+
+        if ticker_row.is_empty():
+            # Constituent not yet listed at this start year — use its earliest available yield
+            earliest = constituent_yields.filter(col("TICKER") == ticker).sort("START_YEAR").head(1)
+            price_yield_val += weight * earliest["PRICE_YIELD"][0]
+            dividend_yield_val += weight * earliest["DIVIDEND_YIELD"][0]
+            is_all_active = False
+        else:
+            price_yield_val += weight * ticker_row["PRICE_YIELD"][0]
+            dividend_yield_val += weight * ticker_row["DIVIDEND_YIELD"][0]
+
+    n_years = current_year - start_year
+    total_yield = price_yield_val + dividend_yield_val
+    mean_annual_yield = (1 + total_yield) ** (1 / n_years) - 1
+    mean_annual_dividend_yield = (1 + dividend_yield_val) ** (1 / n_years) - 1
+
+    portfolio_rows.append({
+        "TICKER": "PLAN",
+        "START_YEAR": start_year,
+        "PRICE_YIELD": price_yield_val,
+        "DIVIDEND_YIELD": dividend_yield_val,
+        "IS_ACTIVE": True,
+        "RANK": 1,
+        "DIVIDEND_RANK": 1,
+        "PRICE_YIELD_BASE": dividend_yield_val,
+        "MEAN_ANNUAL_YIELD": mean_annual_yield,
+        "MEAN_ANNUAL_DIVIDEND_YIELD": mean_annual_dividend_yield
+    })
+
+plot_data_portfolio = pl.DataFrame(portfolio_rows)
+
+
 ###########################
 # Get inflation plot data #
 ###########################
@@ -424,3 +508,7 @@ with open(ETF_DATA_SAVE_PATH, "w", newline="") as file:
 INFLATION_DATA_SAVE_PATH.parent.mkdir(exist_ok=True)
 with open(INFLATION_DATA_SAVE_PATH, "w", newline="") as file:
     plot_data_inflation.write_csv(file)
+
+PORTFOLIO_DATA_SAVE_PATH.parent.mkdir(exist_ok=True)
+with open(PORTFOLIO_DATA_SAVE_PATH, "w", newline="") as file:
+    plot_data_portfolio.write_csv(file)

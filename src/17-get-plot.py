@@ -2,6 +2,7 @@
 from pathlib import Path
 # external
 import plotly
+import plotly.subplots
 import polars as pl
 from polars import col
 
@@ -13,6 +14,7 @@ from polars import col
 PRICE_AND_DIVIDEND_DATA_PATH = Path() / "data" / "plot-data-price-and-dividend.csv"
 ETF_DATA_PATH = Path() / "data" / "plot-data-etf.csv"
 INFLATION_DATA_PATH = Path() / "data" / "plot-data-inflation.csv"
+PORTFOLIO_DATA_PATH = Path() / "data" / "plot-data-portfolio.csv"
 PLOT_SAVE_PATH = Path() / "result" / "sample-plot.png"
 
 PLOT_TITLE = "Return on 1 euro invested on 1st of January of the given start year"
@@ -53,6 +55,9 @@ with open(ETF_DATA_PATH) as file:
 with open(INFLATION_DATA_PATH) as file:
     inflation_data_raw = pl.read_csv(file)
 
+with open(PORTFOLIO_DATA_PATH) as file:
+    portfolio_data_raw = pl.read_csv(file)
+
 
 ############################
 # Convert to dict of lists #
@@ -71,13 +76,11 @@ with open(INFLATION_DATA_PATH) as file:
 #     }
 # }
 
-price_and_dividend_data_raw.columns
-etf_data_raw.columns
-
 price_and_dividend_data_combined = pl.concat([
     price_and_dividend_data_raw,
-    etf_data_raw]
-)
+    etf_data_raw,
+    portfolio_data_raw
+])
 
 price_and_dividend_data = {}
 for start_year in price_and_dividend_data_combined["START_YEAR"].unique():
